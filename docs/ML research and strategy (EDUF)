@@ -1,6 +1,7 @@
 Choice of ML algoritm: Multi-Layer Perceptron
-
 Key mechanisms (function in model): forward propagation, loss function, backpropagation and optimization
+
+
 
 From the website: https://www.geeksforgeeks.org/deep-learning/multi-layer-perceptron-learning-in-tensorflow/ 
 ---------------------------------------------------------------------------------------------------------------
@@ -29,6 +30,8 @@ Basic working principle of Multi-Layer Perceptron:
     - Adam Optimizer: An extension of SGD that incorporates momentum and adaptive learning rates for more efficient training
 ---------------------------------------------------------------------------------------------------------------
 
+
+
 From the website: https://scikit-learn.org/stable/modules/neural_networks_supervised.html#mlp-tips
 ---------------------------------------------------------------------------------------------------------------
 Multi-layer Perceptron is sensitive to feature scaling, so it is highly recommended to scale your data.
@@ -40,6 +43,8 @@ It usually converges quickly and gives pretty good performance.
 SGD with momentum or nesterov’s momentum, on the other hand, can perform better than those two algorithms if learning rate is correctly tuned.
 ---------------------------------------------------------------------------------------------------------------
 
+
+
 How do we choose the right amount of hidden layers and neurons?
 From the website: https://stackoverflow.com/questions/10565868/multi-layer-perceptron-mlp-architecture-criteria-for-choosing-number-of-hidde#:~:text=RoTs%20based%20on%20size%20of,of%20%22incorrect%22%20network%20architecture.
 ---------------------------------------------------------------------------------------------------------------
@@ -48,4 +53,26 @@ Rule of thumb for amount of hidden layers:
   Many difficult classification/regression problems are solved using single-hidden-layer MLPs.
   Only if the model is really underfitting the data, then you can increase the amount of hidden layers gradually.
 Rule of thumb for amount of nodes in the hidden layers:
+  The size has to be somewhere between the input layer and output layer size
+  We can also calculate an estimated number of hidden nodes with: (Number of inputs + outputs) x 2/3
+RoT based on principal components:
+  Typically, we specify as many hidden nodes as dimensions [principal components] needed to capture 70-90% of the variance of the input data set.
+
+[Advice from how the athor of the article works in practice]
+INPUT LAYER: the size of my data vactor (the number of features in my model) + 1 for the bias node and not including the response variable, of course
+
+OUTPUT LAYER: solely determined by my model: regression (one node) versus classification (number of nodes equivalent to the number of classes, assuming softmax)
+
+HIDDEN LAYER: to start, one hidden layer with a number of nodes equal to the size of the input layer. 
+The "ideal" size is more likely to be smaller (i.e, some number of nodes between the number in the input layer and the number in the output layer) rather than larger--again, this is just an empirical observation, and the bulk of this observation is my own experience. 
+If the project justified the additional time required, then I start with a single hidden layer comprised of a small number of nodes, then (as i explained just above) I add nodes to the Hidden Layer, one at a time, while calculating the generalization error, training error, bias, and variance. 
+When generalization error has dipped and just before it begins to increase again, the number of nodes at that point is my choice.
 ---------------------------------------------------------------------------------------------------------------
+
+What I need for my model:
+- Data extraction function
+- linear function
+- non-linear function
+- training function
+- prediction function
+- loss function
