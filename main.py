@@ -13,12 +13,15 @@ def data_extraction(raw_data):
     data.pop(0) #removing the header
 
     # creating the lists from the input variables and labels
-    X_train = [] 
+    X_train = []
     y_train = []
     for line in data:
         y_train.append(line.pop(-1))
         X_train.append(line)
- 
+    # converting the lists to numpy arrays for easier use further on
+    X_train = np.array(X_train)
+    y_train = np.array(y_train)
+    print(X_train.shape)
     return X_train, y_train
 
 data_extraction("data\\train.csv")
