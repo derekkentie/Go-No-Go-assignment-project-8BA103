@@ -6,6 +6,9 @@ import matplotlib as plt
 # based on the variables: Age, sleep duration, study hours, screen time, caffeine intake and physical activity.
 # This means that we 6 variables for the input layer (+1 bias node), and 3 categories for the output layer.
 
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
 def data_extraction(raw_data):
     """ This function extracts and returns the X_train and y_train for the train_model function"""
 
@@ -21,10 +24,7 @@ def data_extraction(raw_data):
     # converting the lists to numpy arrays for easier use further on
     X_train = np.array(X_train)
     y_train = np.array(y_train)
-    print(X_train.shape)
     return X_train, y_train
-
-data_extraction("data\\train.csv")
 
 def train_model(X_train, y_train, n_hidden_layers = 6, n_nodes_per_layer = 1, max_iter = 1000):
     
