@@ -69,10 +69,23 @@ If the project justified the additional time required, then I start with a singl
 When generalization error has dipped and just before it begins to increase again, the number of nodes at that point is my choice.
 ---------------------------------------------------------------------------------------------------------------
 
+
+What kind of non-linearity function do we use?
+From the websites: https://www.geeksforgeeks.org/deep-learning/softmax-vs-sigmoid-activation-function/ and https://www.geeksforgeeks.org/machine-learning/activation-functions-neural-networks/ 
+---------------------------------------------------------------------------------------------------------------
+The sigmoid function is used for binary class problems, the softmax function on the other hand is used for multi class problems.
+Other functions like ReLU and Tanh are also used for binary class problems, but they are not suited for multi class problems:
+"Activation functions like Softmax allow the model to handle complex multi-class problems, whereas simpler functions like ReLU or Leaky ReLU are used for basic layers.".
+Our training dataset shows to three different classes (bad, medium, good), so we need to implement a softmax as activation function
+---------------------------------------------------------------------------------------------------------------
+
+
+Advice from a friend of mine: use classes in your model to save the forward and backwardpropagation to improve your model
+
 What I need for my model:
 - Data extraction function
 - linear function
-- non-linear function
+- activation function
 - training function
 - prediction function
 - loss function
