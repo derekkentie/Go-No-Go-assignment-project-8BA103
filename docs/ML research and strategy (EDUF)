@@ -86,9 +86,10 @@ https://medium.com/ useful to figure out how exactly to implement models by hand
 What I need for my model:
 - Class (creates a kind of "object", the object contains all the functions that are needed to give the desired result)
 - Init function (Needed to let the other functions communicate with eachother, saves a lot of computation time, THIS IS WHY EXAMPLES FROM IML DON'T OBVIOUSLY REFFERENCE OTHER FUNCTION VARIABLES)
-- Data extraction function
+- Data extraction function (ADVICE FROM TA: don't implement a data extraction function in your fit function in the class, but extract the data correctly outside of the class
+  This enables the class to be used with any type of data file, you just implement your X and y as hyperparameters and the user can choose what those variables will be.)
 - linear function
 - activation function
-- training function
+- training function (gradient descent)
 - prediction function
 - loss function
