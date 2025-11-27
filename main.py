@@ -12,11 +12,8 @@ def sigmoid(z): #sigmoid is used for every node in the hidden layer(s)
 def softmax(z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
     return np.exp(-z) / (1 + np.exp(-z))
 
-def augment_matrix(X):
-    return np.c_[np.ones((X.shape[0], 1)), X] 
-
 def data_extraction_csv(csv_file):
-        """ This function extracts and returns the X_train and y_train for the train_model function"""
+        """ This function extracts data from an csv file and splits the inputs and outputs in different arrays called X and y"""
         data = [line.strip().split(',') for line in open(csv_file, 'r')] # extracting all the data from the raw csv file and placing it in a list of lists
         data.pop(0) #removing the header
         # creating the lists from the input variables and labels
@@ -25,36 +22,39 @@ def data_extraction_csv(csv_file):
         for line in data:
             y.append(line.pop(-1))
             X.append(line)
-        # converting the lists to numpy arrays for easier use further on
+        # converting the lists to numpy arrays
         X = np.array(X)
         y = np.array(y)
         return X, y
 
+
+
+
+
+
 class MultiLayerPerceptron:
-    def _init_(self, n_hidden_layers = 6, n_nodes_per_layer = 1, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
-        self.theta = None
-        self.bias = None
-        self.n_hidden_layers = n_hidden_layers
-        self.n_nodes_per_layer = n_nodes_per_layer
-        self.alpha = alpha
-        self.learning_rate = learning_rate
-        self.epochs = epochs
+    def __init__(self, hidden_layers):
+        self.n_layers = len(layers)
+        self.layers = layers
 
     def fit(self, X, y):
+         n_samples, n_features = X.shape
          pass
 
-    def train_model(self, X, y, n_hidden_layers = 6, n_nodes_per_layer = 1, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
-        n_samples, n_features = X.shape
-        self.theta = np.random.rand(n_features)
+    def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000, threshold_medium = 0.3, thershold_good = 0.8):
+        n_samples, n_features = X_train.shape
+        self.weights = [np.random.rand()*np.ones(n_features)]
         self.bias = np.random.rand()
         print(X)
-        print(self.theta, self.bias)
+        print(self.weights, self.bias)
+
+
         for epoch in range(epochs):
-            prediction = np.dot(X,self.theta)
+            prediction = np.dot(X,self.weights)
             error = prediction - y
             gradient_direction = (2/n_samples)*(np.dot(np.transpose(X),error)) # Devided by n_samples to apply MSE instead of RSS
-            shrinkage = learning_rate*self.theta*alpha/n_samples
-            self.theta = self.theta - learning_rate*gradient_direction - shrinkage
+            shrinkage = learning_rate*self.weights*alpha/n_samples
+            self.weights = self.weights - learning_rate*gradient_direction - shrinkage
         """
         Trains your ML algorithm on the provided training data.
 
@@ -84,6 +84,7 @@ class MultiLayerPerceptron:
         """
         pass
 X, y = data_extraction_csv("data\\train.csv")
+unique, counts = np.unique(y, return_counts=True)
+print(unique, counts)
 model = MultiLayerPerceptron()
 model.train_model(X, y)
-print(augment_matrix(X), X.shape, augment_matrix(X).shape)
