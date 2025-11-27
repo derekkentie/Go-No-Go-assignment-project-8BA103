@@ -81,8 +81,11 @@ Our training dataset shows to three different classes (bad, medium, good), so we
 
 
 Advice from a friend of mine: use classes in your model to save the forward and backwardpropagation to improve your model
+https://medium.com/ useful to figure out how exactly to implement models by hand
 
 What I need for my model:
+- Class (creates a kind of "object", the object contains all the functions that are needed to give the desired result)
+- Init function (Needed to let the other functions communicate with eachother, saves a lot of computation time, THIS IS WHY EXAMPLES FROM IML DON'T OBVIOUSLY REFFERENCE OTHER FUNCTION VARIABLES)
 - Data extraction function
 - linear function
 - activation function
