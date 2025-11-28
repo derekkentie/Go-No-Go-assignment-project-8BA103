@@ -1,16 +1,8 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 # The purpose of the model is to accurately categorise the sleep quality of each sample in the categories: bad, medium and good,
 # based on the variables: Age, sleep duration, study hours, screen time, caffeine intake and physical activity.
 # This means that we 6 variables for the input layer (+1 bias node), and 3 categories for the output layer.
-
-def sigmoid(z): #sigmoid is used for every node in the hidden layer(s)
-     return 1 / (1 + np.exp(-z))
-
-def softmax(z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
-    return np.exp(-z) / (1 + np.exp(-z))
 
 def data_extraction_csv(csv_file):
         """ This function extracts data from an csv file and splits the inputs and outputs in different arrays called X and y"""
@@ -27,27 +19,64 @@ def data_extraction_csv(csv_file):
         y = np.array(y)
         return X, y
 
+class Architecture:
+    def __init__(self, input_size, hidden_sizes, output_size):
+        self.input = input_size
+        self.hidden = list(hidden_sizes)
+        self.output = output_size
 
-
-
+    @property
+    def layer_sizes(self):
+        return [self.input] + self.hidden + [self.output]
 
 
 class MultiLayerPerceptron:
-    def __init__(self, hidden_layers):
-        self.n_layers = len(layers)
-        self.layers = layers
+    def __init__(self, X, y, hidden_size = (3,2)):
+
+        #determining the input and output sizes
+        n_features = X.shape[1]
+        outputs = np.unique(y)
+
+        #assigning all the values 
+        self.input_size = n_features
+        self.hidden_size = hidden_size
+        self.output_size = len(outputs)
+        
+        #connecting the Architecture class, this will later be used to assign the parameters to every connection between the layers
+        self.architecture = Architecture(
+            input_size=self.input_size,
+            hidden_sizes=self.hidden_size,
+            output_size=self.output_size
+        )
+        #initializing the parameters
+        self.initialise_parameters()
+
+    def initialise_parameters(self):
+        layer_sizes = self.architecture.layer_sizes
+        
+        self.weights = []
+        self.biases = []
+
+        for i in range(len(layer_sizes) - 1):
+            in_dim = layer_sizes[i]
+            out_dim = layer_sizes[i+1]
+
+            W = np.random.randn(in_dim, out_dim) * np.sqrt(2 / in_dim)
+            b = np.zeros((1, out_dim))
+
+            self.weights.append(W)
+            self.biases.append(b)
 
     def fit(self, X, y):
-         n_samples, n_features = X.shape
-         pass
+        n_samples, n_features = X.shape
+        pass
 
     def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000, threshold_medium = 0.3, thershold_good = 0.8):
-        n_samples, n_features = X_train.shape
-        self.weights = [np.random.rand()*np.ones(n_features)]
-        self.bias = np.random.rand()
-        print(X)
-        print(self.weights, self.bias)
 
+
+        for epoch in range(epochs):
+            weighted_sum += self.weights*X + self.bias
+            #activation_function = sigmoid(weighted_sum)
 
         for epoch in range(epochs):
             prediction = np.dot(X,self.weights)
@@ -83,8 +112,26 @@ class MultiLayerPerceptron:
             y_pred (numpy.ndarray): Predicted labels, shape (n_samples,)
         """
         pass
+
+    def backpropagation():
+        pass
+
+    def derivative():
+        pass
+
+    def sigmoid(z): #sigmoid is used for every node in the hidden layer(s)
+     return 1 / (1 + np.exp(-z))
+
+    def softmax(z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
+        return np.exp(-z) / (1 + np.exp(-z))
+        
+    def relu(z):
+        return np.maximum(0.0, z)
+
+
 X, y = data_extraction_csv("data\\train.csv")
-unique, counts = np.unique(y, return_counts=True)
-print(unique, counts)
-model = MultiLayerPerceptron()
-model.train_model(X, y)
+
+model = MultiLayerPerceptron(X, y)
+
+print(model.architecture.layer_sizes)
+print("weights", model.weights, "\n", "baises" ,model.biases)
