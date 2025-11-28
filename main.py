@@ -80,7 +80,7 @@ class MultiLayerPerceptron:
             elif self.activation_function in ["sigmoid", "tanh"]:
                 initialization_method = self.xavier_init(in_dim)
             else:
-                raise ValueError("Activation functions supported: 'sigmoid', 'tanh', 'ReLU'")
+                raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
 
             W = np.random.randn(in_dim, out_dim) * initialization_method #apply the initialization method to avoid vanishing or exploding weights
             b = np.zeros((1, out_dim))
@@ -89,12 +89,48 @@ class MultiLayerPerceptron:
             self.biases.append(b)
 
     def forward(self, X):
-        pass
+        """
+        Perform a forward pass through the network.
+        Returns:
+            activations: list of activations per layer (including input layer)
+            zs: list of pre-activation z-values per layer
+        """
+        activations = [X] # a0 = input layer
+        z_values = [] # to store z-values
+
+        a = X
+        n_layers = len(self.weights)
+
+        for i in range(n_layers):
+            W = self.weights[i]
+            b = self.biases[i]
+
+            # compute pre-activation
+            z = a @ W + b
+            z_values.append(z)
+
+            # output layer → softmax
+            if i == n_layers - 1:
+                a = self.softmax(z)
+
+            # hidden layers → chosen activation function
+            else:
+                if self.activation_function == "ReLU":
+                    a = self.relu(z)
+                elif self.activation_function in ["sigmoid", "tanh"]:
+                    a = self.sigmoid(z)
+                else:
+                    raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
+
+            activations.append(a)
+
+        return activations, z_values
+
     
     def backpropagation():
         pass
 
-    def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000, threshold_medium = 0.3, thershold_good = 0.8):
+    def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
         """
         Trains your ML algorithm on the provided training data.
 
@@ -130,17 +166,21 @@ class MultiLayerPerceptron:
 
     #activation functions
     def sigmoid(self, z): #optional activation function in hidden layer
-     return 1 / (1 + np.exp(-z))
+        return 1 / (1 + np.exp(-z))
+    
     def relu(self, z): #optional activation function in hidden layer
         return np.maximum(0.0, z)
+    
     def softmax(self, z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
         z_shifted = z - np.max(z, axis=1, keepdims=True)
         exp_z = np.exp(z_shifted)
         return exp_z / np.sum(exp_z, axis=1, keepdims=True)
     
+
     #Initialization methods to prevent vanishing or exploding weights
     def xavier_init(self, in_dim):
         return np.sqrt(1 / in_dim) #used for sigmoid or tanh networks
+    
     def he_init(self, in_dim):
         return np.sqrt(2 / in_dim) #used for ReLU networks
         
@@ -149,3 +189,6 @@ class MultiLayerPerceptron:
 X, y = data_extraction_csv("data\\train.csv")
 
 model = MultiLayerPerceptron(X, y)
+print(model.architecture.layer_sizes)
+print("number of layers",len(model.weights))
+print("weights", model.weights, model.weights[1][2], '\n', "biases", model.biases)
