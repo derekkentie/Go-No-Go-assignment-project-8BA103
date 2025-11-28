@@ -93,3 +93,7 @@ What I need for my model:
 - training function (gradient descent)
 - prediction function
 - loss function
+
+Advice from LLM ChatGPT 5.1: make use of Xavier or He initialization to prevent the vanishing or exploding of the activations
+provided reports to support this: https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/He_Delving_Deep_into_ICCV_2015_paper.pdf & https://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf 
+Might be a bit overkill due to the expected small size of the model, but still interesting to implement in the model
