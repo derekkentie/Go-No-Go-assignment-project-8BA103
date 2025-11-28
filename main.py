@@ -7,7 +7,7 @@ import numpy as np
 def data_extraction_csv(csv_file):
     """ 
     This function extracts data from a csv file and splits the inputs and outputs in different arrays called X and y,
-    assuming that the csv file has a header in the first row and the output variables stored in the last column 
+    assuming that the csv file has a header in the first row and the output variables stored in the last column. 
     """
     data = [line.strip().split(',') for line in open(csv_file, 'r')] # extracting all the data from the raw csv file and placing it in a list of lists
     data.pop(0) #removing the header
@@ -18,9 +18,25 @@ def data_extraction_csv(csv_file):
         y.append(line.pop(-1))
         X.append(line)
     # converting the lists to numpy arrays
-    X = np.array(X)
+    X = np.array(X, dtype = float)
     y = np.array(y)
     return X, y
+
+def encode_labels(labels):
+    """
+    We need to encode the labels to integers to let to softmax function work properly in the output layer
+    """
+    classes = sorted(np.unique(labels))    # e.g. ['Bad', 'Good', 'Medium'] because it is sorted alphabetically
+
+    # creating to dictionaries, one for converting labels to integers, and one the other way around
+    class_to_int = {cls: i for i, cls in enumerate(classes)} 
+    int_to_class = {i: cls for cls, i in class_to_int.items()}
+
+    # We need the integer values for backwardpropagation
+    y_int = np.array([class_to_int[label] for label in labels], dtype=int)
+
+    return y_int, class_to_int, int_to_class
+
 
 class Architecture:
     """ 
@@ -40,17 +56,22 @@ class Architecture:
 
 
 class MultiLayerPerceptron:
-    def __init__(self, X, y, hidden_size = (3,2), activation_function = "ReLU"):
+    def __init__(self, X, y, hidden_size = (3,2), activation_function = "ReLU", learning_rate=0.01, epochs=1000):
 
         #determining the input and output sizes
-        n_features = X.shape[1]
-        outputs = np.unique(y)
+        n_samples, n_features = X.shape
+
+        #store the encoding of the y values
+        self.y_int, self.class_to_int, self.int_to_class = encode_labels(y)
 
         #assigning all the values 
+        self.n_samples = n_samples
         self.input_size = n_features
         self.hidden_size = hidden_size
-        self.output_size = len(outputs)
+        self.output_size = len(self.class_to_int)
         self.activation_function = activation_function
+        self.learning_rate = learning_rate
+        self.epochs = epochs
         
         #connecting the Architecture class as an object, this will later be used to assign a parameter to every connection between the nodes
         self.architecture = Architecture(
@@ -69,26 +90,26 @@ class MultiLayerPerceptron:
         self.weights = []
         self.biases = []
 
-        #creating the weights and biases
+        # creating the weights and biases
         for i in range(len(layer_sizes) - 1):
             in_dim = layer_sizes[i]
             out_dim = layer_sizes[i+1]
 
             #Chosing between initialization methods based on hidden layer activation function
-            if self.activation_function == "ReLU":
+            if self.activation_function.lower() == "relu":
                 initialization_method = self.he_init(in_dim)
-            elif self.activation_function in ["sigmoid", "tanh"]:
+            elif self.activation_function.lower() in ["sigmoid", "tanh"]:
                 initialization_method = self.xavier_init(in_dim)
             else:
                 raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
 
-            W = np.random.randn(in_dim, out_dim) * initialization_method #apply the initialization method to avoid vanishing or exploding weights
+            W = np.random.randn(in_dim, out_dim)# * initialization_method #apply the initialization method to avoid vanishing or exploding weights
             b = np.zeros((1, out_dim))
 
             self.weights.append(W)
             self.biases.append(b)
 
-    def forward(self, X):
+    def forwardpropagation(self, X):
         """
         Perform a forward pass through the network.
         Returns:
@@ -107,76 +128,175 @@ class MultiLayerPerceptron:
 
             # compute pre-activation
             z = a @ W + b
+            
+            # store every z-value in it's list
             z_values.append(z)
 
-            # output layer → softmax
+            # output layer needs softmax
             if i == n_layers - 1:
                 a = self.softmax(z)
 
-            # hidden layers → chosen activation function
             else:
-                if self.activation_function == "ReLU":
-                    a = self.relu(z)
-                elif self.activation_function in ["sigmoid", "tanh"]:
-                    a = self.sigmoid(z)
-                else:
-                    raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
-
+                a= self.activation(z)
+            
+            # store every activation in the it's list
             activations.append(a)
-
         return activations, z_values
 
+    def backwardpropagation(self, activations, z_values, learning_rate, y_int):
+        """
+        Calculates the updates for all the weights through every hidden layer
+        """
+        
+        # One-hot encode
+        y_onehot = self.one_hot(y_int)     # shape: (n_samples, output_size)
+
+        # Output error
+        output_error = activations[-1] - y_onehot
+
+        # Gradient storage
+        dWeights = [None] * len(self.weights)
+        dbiases = [None] * len(self.biases)
+
+        # Output layer gradients
+        dWeights[-1] = activations[-2].T @ output_error / self.n_samples
+        dbiases[-1] = np.sum(output_error, axis=0, keepdims=True) / self.n_samples
+
+        #backwardpropagation through the hidden layers
+        for layer in range(len(self.weights) -2, -1, -1):
+            
+            next_weight = self.weights[layer + 1] # weights of next layer
+
+            output_error = (output_error @ next_weight.T) * self.activation_derivative(z_values[layer])
+
+            # Gradients for this layer
+            dWeights[layer] = activations[layer].T @ output_error / self.n_samples
+            dbiases[layer] = np.sum(output_error, axis=0, keepdims=True) / self.n_samples
+
+        for layer in range(len(self.weights)):
+            self.weights[layer] -= learning_rate * dWeights[layer]
+            self.biases[layer] -= learning_rate * dbiases[layer]
+
+    def fit(self, X):
+        """
+        Trains the MLP using forward -> loss -> backward updates.
+        """
+        y_int = self.y_int
+
+        for epoch in range(self.epochs):
+            
+            # 1. Forward pass
+            activations, z_values = self.forwardpropagation(X)
+
+            # 2. Compute loss
+            y_onehot = self.one_hot(y_int)
+            loss = self.cross_entropy(y_onehot, activations[-1])
+
+            # 3. Accuracy
+            preds = np.argmax(activations[-1], axis=1)
+            acc = np.mean(preds == y_int)
+
+            # 4. Backprop
+            self.backwardpropagation(activations, z_values, self.arning_rate, y_int)
+
+            # 5. Progress print
+            if epoch % 100 == 0:
+                print(f"Epoch {epoch} | Loss = {loss:.4f} | Accuracy = {acc:.4f}")
+        print("Training complete.")
+
+    def predict(self, X):
+        activations, _ = self.forwardpropagation(X)
+        pred_int = np.argmax(activations[-1], axis=1)
+        pred_labels = np.array([self.int_to_class[i] for i in pred_int])
+        return pred_labels
+
+    #=====================================================================================
+    # Below are all my helper functions to shorten the fundamental calculation functions
+    #=====================================================================================
+
+    def one_hot(self, y_int):
+        """
+        Converts integer class labels into one-hot encoded format.
+        
+        Parameters:
+            y_int (numpy.ndarray): Array of integer-encoded labels, shape (n_samples,)
+        
+        Returns:
+            numpy.ndarray: One-hot encoded matrix of shape (n_samples, n_classes)
+        """
+        m = y_int.shape[0]
+        onehot = np.zeros((m, self.output_size))
+        onehot[np.arange(m), y_int] = 1
+        return onehot
     
-    def backpropagation():
-        pass
-
-    def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
+    def cross_entropy(self, y_onehot, y_pred):
         """
-        Trains your ML algorithm on the provided training data.
-
+        Computes stable categorical cross-entropy loss.
+        
         Parameters:
-            X_train (numpy.ndarray): Training features, shape (n_samples, n_features)
-            y_train (numpy.ndarray): Training labels, shape (n_samples,)
-            **hyperparams: Algorithm-specific hyperparameters
-                        (e.g., learning_rate=0.01, max_iter=1000, k=5, etc.)
-
+            y_onehot (numpy.ndarray): One-hot encoded ground truth labels (n_samples, n_classes)
+            y_pred (numpy.ndarray): Predicted probabilities from softmax (n_samples, n_classes)
+        
         Returns:
-            model_params (dict): A dictionary containing all information needed
-                                to make predictions later.
-                                For example, it might include learned weights,
-                                biases, thresholds, or training statistics.
+            float: mean cross-entropy loss
         """
-        pass
+        # to avoid log(0) we need to let values only get really close to it
+        eps = 1e-12
+        y_pred = np.clip(y_pred, eps, 1 - eps)  
+        
+        losses = -np.sum(y_onehot * np.log(y_pred), axis=1)
+        return np.mean(losses)
 
-    def predict(self, X_test, model_params):
-        """
-        Uses the trained parameters to make predictions on new (test) data.
-
-        Parameters:
-            X_test (numpy.ndarray): Test features, shape (n_samples, n_features)
-            model_params (dict): Dictionary of parameters returned by train_model()
-
-        Returns:
-            y_pred (numpy.ndarray): Predicted labels, shape (n_samples,)
-        """
-        pass
-
-    def derivative():
-        pass
-
+        
+    #activation function selector
+    def activation(self, z):
+        if self.activation_function == "ReLU":
+            return self.relu(z)
+        elif self.activation_function == "sigmoid":
+            return self.sigmoid(z)
+        elif self.activation_function == "tanh":
+            return self.tanh(z)
+        else:
+            raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
+    
     #activation functions
-    def sigmoid(self, z): #optional activation function in hidden layer
+    def sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
     
-    def relu(self, z): #optional activation function in hidden layer
+    def relu(self, z):
         return np.maximum(0.0, z)
     
-    def softmax(self, z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
+    def tanh(self, z):
+        return np.tanh(z)
+    
+    #derivative activation function selector
+    def activation_derivative(self, z):
+        if self.activation_function == "ReLU":
+            return self.relu_derivative(z)
+        elif self.activation_function == "sigmoid":
+            return self.sigmoid_derivative(z)
+        elif self.activation_function == "tanh":
+            return self.tanh_derivative(z)
+        else:
+            raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
+    
+    #derivatives of activation functions
+    def sigmoid_derivative(self, z):
+        s = self.sigmoid(z)
+        return s * (1 - s)
+    
+    def relu_derivative(self, z):
+        return (z > 0).astype(float)
+    
+    def tanh_derivative(self, z):
+        return 1 - np.tanh(z)**2
+
+    #softmax is used in the output layer to make a enable the model to classify with multiple classes
+    def softmax(self, z): 
         z_shifted = z - np.max(z, axis=1, keepdims=True)
         exp_z = np.exp(z_shifted)
         return exp_z / np.sum(exp_z, axis=1, keepdims=True)
     
-
     #Initialization methods to prevent vanishing or exploding weights
     def xavier_init(self, in_dim):
         return np.sqrt(1 / in_dim) #used for sigmoid or tanh networks
@@ -185,10 +305,14 @@ class MultiLayerPerceptron:
         return np.sqrt(2 / in_dim) #used for ReLU networks
         
 
+X_train, y_train = data_extraction_csv("data\\train.csv")
+X_test, y_test = data_extraction_csv("data\\test.csv")
 
-X, y = data_extraction_csv("data\\train.csv")
+def train_model(X_train, y_train, **hyperparams):
+    mlp = MultiLayerPerceptron(X_train, y_train, **hyperparams)
+    mlp.fit(X_train, **hyperparams)
+    return {"model": mlp}
 
-model = MultiLayerPerceptron(X, y)
-print(model.architecture.layer_sizes)
-print("number of layers",len(model.weights))
-print("weights", model.weights, model.weights[1][2], '\n', "biases", model.biases)
+def predict(X_test, params):
+    mlp = params["model"]
+    return mlp.predict(X_test)
