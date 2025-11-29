@@ -197,7 +197,7 @@ class MultiLayerPerceptron:
             acc = np.mean(preds == y_int)
 
             # 4. Backprop
-            self.backwardpropagation(activations, z_values, self.arning_rate, y_int)
+            self.backwardpropagation(activations, z_values, self.learning_rate, y_int)
 
             # 5. Progress print
             if epoch % 100 == 0:
