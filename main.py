@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 # The purpose of the model is to accurately categorise the sleep quality of each sample in the categories: bad, medium and good,
 # based on the variables: Age, sleep duration, study hours, screen time, caffeine intake and physical activity.
@@ -9,17 +10,22 @@ def data_extraction_csv(csv_file):
     This function extracts data from a csv file and splits the inputs and outputs in different arrays called X and y,
     assuming that the csv file has a header in the first row and the output variables stored in the last column 
     """
-    data = [line.strip().split(',') for line in open(csv_file, 'r')] # extracting all the data from the raw csv file and placing it in a list of lists
-    data.pop(0) #removing the header
+    data = np.array(pd.read_csv(csv_file, sep=','))
+    #data = [line.strip().split(',') for line in open(csv_file, 'r')] # extracting all the data from the raw csv file and placing it in a list of lists
+    #data.pop(0) #removing the header
     # creating the lists from the input variables and labels
     X = []
     y = []
+
     for line in data:
-        y.append(line.pop(-1))
-        X.append(line)
+        X.append(line[:-1])
+        y.append(line[-1])
+
     # converting the lists to numpy arrays
     X = np.array(X)
     y = np.array(y)
+    print("Shape of X:", X.shape, '\n')
+    print("Shape of y:", y.shape)
     return X, y
 
 class Architecture:
@@ -63,7 +69,8 @@ class MultiLayerPerceptron:
 
     def initialise_parameters(self):
         """ 
-        Here we use the output of the Architecture class to assign a weight/parameter to every connection between the nodes 
+        Here we use the output of the Architecture class to assign 
+        a weight/parameter to every connection between the nodes.
         """
         layer_sizes = self.architecture.layer_sizes
         self.weights = []
@@ -82,7 +89,8 @@ class MultiLayerPerceptron:
             else:
                 raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
 
-            W = np.random.randn(in_dim, out_dim) * initialization_method #apply the initialization method to avoid vanishing or exploding weights
+            #apply the initialization method to avoid vanishing or exploding weights
+            W = np.random.randn(in_dim, out_dim) * initialization_method 
             b = np.zeros((1, out_dim))
 
             self.weights.append(W)
@@ -100,35 +108,38 @@ class MultiLayerPerceptron:
 
         a = X
         n_layers = len(self.weights)
-
+        print(n_layers)
         for i in range(n_layers):
             W = self.weights[i]
             b = self.biases[i]
-
+            
             # compute pre-activation
+            print(a.shape, np.array(W).shape, np.array(b).shape)
             z = a @ W + b
+            print(np.array(z).shape)
+
             z_values.append(z)
 
-            # output layer → softmax
+            # output layer --> softmax
             if i == n_layers - 1:
                 a = self.softmax(z)
 
             # hidden layers → chosen activation function
             else:
-                if self.activation_function == "ReLU":
-                    a = self.relu(z)
-                elif self.activation_function in ["sigmoid", "tanh"]:
-                    a = self.sigmoid(z)
-                else:
-                    raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
+                a = self.nonlin_selector(z)
 
             activations.append(a)
-
+        print("activations:", activations[-1][:10])
+        #print("z values:", z_values[1])
         return activations, z_values
 
     
-    def backpropagation():
-        pass
+    def backpropagation(self, activations, z_values, y):
+        error = y - activations[-1]
+        for layer in range(len(activations), 0, -1):
+            delta = error * self.d_nonlin_selector(activations[layer])
+            error = delta @ self.weights(layer).T
+
 
     def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
         """
@@ -161,21 +172,59 @@ class MultiLayerPerceptron:
         """
         pass
 
-    def derivative():
+   
         pass
 
     #activation functions
+    def nonlin_selector(self, z):
+        if self.activation_function == "ReLU":
+            return self.relu(z)
+        elif self.activation_function == "sigmoid":
+            return self.sigmoid(z)
+        elif self.activation_function == "tanh":
+            return self.tanh(z)
+
     def sigmoid(self, z): #optional activation function in hidden layer
         return 1 / (1 + np.exp(-z))
+    
+    def tanh(self, z):
+        return np.tanh(z)
     
     def relu(self, z): #optional activation function in hidden layer
         return np.maximum(0.0, z)
     
     def softmax(self, z): #softmax is used in the output layer to enable the model to classify with multiple classes
-        z_shifted = z - np.max(z, axis=1, keepdims=True)
-        exp_z = np.exp(z_shifted)
-        return exp_z / np.sum(exp_z, axis=1, keepdims=True)
+        z = np.array(z, dtype=float)               # zorg dat het een vector is
+        e_z = np.exp(z - np.max(z))               # numerically stable softmax
+        return e_z / np.sum(e_z)
     
+    #derivative activation functions
+    def d_nonlin_selector(self, z):
+        if self.activation_function == "ReLU":
+            return self.d_relu(z)
+        elif self.activation_function == "sigmoid":
+            return self.d_sigmoid(z)
+        elif self.activation_function == "tanh":
+            return self.d_tanh(z)
+
+    def d_sigmoid(self, z):
+        f = self.sigmoid
+        return f(z)*(1-f(z))
+    
+    def d_tanh(self,z):
+        f = self.tanh
+        return 1- f(z)*f(z)
+    
+    def d_relu(self, z):
+        if z > 0:
+            return 1
+        else:
+            return 0
+
+    def d_softmax(self, z):
+        f = self.softmax
+        return f(z)*(1-f(z))
+
 
     #Initialization methods to prevent vanishing or exploding weights
     def xavier_init(self, in_dim):
@@ -186,9 +235,8 @@ class MultiLayerPerceptron:
         
 
 
-X, y = data_extraction_csv("data/train.csv")
+X_train, y_train = data_extraction_csv("data/train.csv")
 
-model = MultiLayerPerceptron(X, y)
+model = MultiLayerPerceptron(X_train, y_train)
 print(model.architecture.layer_sizes)
-print("number of layers",len(model.weights))
-print("weights", model.weights, model.weights[1][2], '\n', "biases", model.biases)
+model.forward(X_train)
