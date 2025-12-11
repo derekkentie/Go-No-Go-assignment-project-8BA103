@@ -171,7 +171,7 @@ class MultiLayerPerceptron:
     def relu(self, z): #optional activation function in hidden layer
         return np.maximum(0.0, z)
     
-    def softmax(self, z): #softmax is used in the output layer to make a enable the model to classify with multiple classes
+    def softmax(self, z): #softmax is used in the output layer to enable the model to classify with multiple classes
         z_shifted = z - np.max(z, axis=1, keepdims=True)
         exp_z = np.exp(z_shifted)
         return exp_z / np.sum(exp_z, axis=1, keepdims=True)
@@ -186,7 +186,7 @@ class MultiLayerPerceptron:
         
 
 
-X, y = data_extraction_csv("data\\train.csv")
+X, y = data_extraction_csv("data/train.csv")
 
 model = MultiLayerPerceptron(X, y)
 print(model.architecture.layer_sizes)
