@@ -5,24 +5,29 @@ import pandas as pd
 # based on the variables: Age, sleep duration, study hours, screen time, caffeine intake and physical activity.
 # This means that we 6 variables for the input layer (+1 bias node), and 3 categories for the output layer.
 
-def data_extraction_csv(csv_file):
+def data_extraction_csv(csv_file, normalize=True):
     """ 
     This function extracts data from a csv file and splits the inputs and outputs in different arrays called X and y,
     assuming that the csv file has a header in the first row and the output variables stored in the last column 
     """
-    data = np.array(pd.read_csv(csv_file, sep=','))
+    df = pd.read_csv(csv_file)
     # creating the lists from the input variables and labels
-    X = []
-    y = []
+    X = df.iloc[:, :-1].to_numpy(dtype=float)
+    y = df.iloc[:, -1].to_numpy()
 
-    for line in data:
-        X.append(line[:-1])
-        y.append(line[-1])
 
-    # converting the lists to numpy arrays
-    X = np.array(X, dtype=float)
-    y = np.array(y)
-    return X, y
+    if normalize:
+        mean = X.mean(axis=0)
+        std = X.std(axis=0)
+
+        # bescherming tegen delen door 0
+        std[std == 0] = 1.0
+
+        X = (X - mean) / std
+
+        return X, y, mean, std
+
+    return X, y, None, None
 
 class Architecture:
     """ 
@@ -119,10 +124,9 @@ class MultiLayerPerceptron:
 
     
     def backpropagation(self, activations, z_values, y, learning_rate=0.01):
-        y_onehot = self.one_hot_encoding(y)
         n_samples = len(y)
         predictions = activations[-1]
-        delta = predictions - y_onehot
+        delta = predictions - y
 
         weight_gradients = [np.zeros(weight.shape) for weight in self.weights]
         bias_gradients = [np.zeros(bias.shape) for bias in self.biases]
@@ -151,7 +155,7 @@ class MultiLayerPerceptron:
         y_onehot = self.one_hot_encoding(y_train)
         for epoch in range(epochs):
             activations, z_values = self.forward(X_train)
-            self.backpropagation( activations, z_values, y_train, learning_rate)
+            self.backpropagation( activations, z_values, y_onehot, learning_rate)
 
             #keeping track of loss and accuracy
             predictions = activations[-1]
@@ -232,11 +236,6 @@ class MultiLayerPerceptron:
     def d_tanh(self,z):
         f = self.tanh
         return 1- f(z)*f(z)
-    """ 
-    def d_relu(self, z):
-        return (z > 0).astype(float)
-    """
-
 
     def d_relu(self, z):
         d_relu = []
@@ -274,9 +273,10 @@ class MultiLayerPerceptron:
         y_predict_clipped = np.clip(y_predict, 1e-15, 1 - 1e-15) #clipping the predictions to prevent log(0)
         return -np.sum(y * np.log(y_predict_clipped)) / y.shape[0] #returning mean of sample losses
 
-X_train, y_train = data_extraction_csv("data/train.csv")
-X_test, y_test = data_extraction_csv("data/test.csv")
-model = MultiLayerPerceptron(6, 3)
+X_train, y_train, mean, std = data_extraction_csv("data/train.csv")
+X_test, y_test, _, _ = data_extraction_csv("data/test.csv", normalize=False)
+X_test = (X_test - mean) / std
+model = MultiLayerPerceptron(6, 3, (5,5,5), activation_function="ReLU")
 print(model.architecture.layer_sizes)
-params = model.train_model(X_train, y_train)
+params = model.train_model(X_train, y_train, learning_rate=0.001, epochs=10000)
 model.predict(X_test, params)
