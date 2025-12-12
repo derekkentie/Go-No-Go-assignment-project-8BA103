@@ -134,12 +134,19 @@ class MultiLayerPerceptron:
     
     def backpropagation(self, activations, z_values, y, learning_rate=0.01):
         y_onehot = self.one_hot_encoding(y)
-        prediction = activations[-1]
-        error = y_onehot - prediction
-
+        predictions = activations[-1]
+        error = y_onehot - predictions
+        print(y_onehot)
+        print(predictions)
+        print(error)
+        loss = self.categorical_cross_entropy(predictions, y_onehot)
+        print("loss", loss)
+        accuracy = np.mean(np.argmax(predictions, axis = 1) == np.argmax(y_onehot, axis = 1))
+        print("accuracy:", accuracy)
         for layer in range(len(activations), 0, -1):
             delta = error * self.d_nonlin_selector(activations[layer])
-            error = delta @ self.weights(layer).T
+            self.weights[layer] = learning_rate * delta
+            self.biases[layer] += learning_rate * delta
 
 
     def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
@@ -255,8 +262,9 @@ class MultiLayerPerceptron:
         y_onehot = base_arr
         return y_onehot
         
-    def categorical_cross_entropy(Y_predict, y):
-        pass
+    def categorical_cross_entropy(self, y_predict, y):
+        y_predict_clipped = np.clip(y_predict, 1e-15, 1 - 1e-15) #clipping the predictions to prevent log(0)
+        return -np.sum(y * np.log(y_predict_clipped)) / y.shape[0] #returning mean of sample losses
 
 X_train, y_train = data_extraction_csv("data/train.csv")
 
