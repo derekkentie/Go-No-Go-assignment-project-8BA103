@@ -20,10 +20,8 @@ def data_extraction_csv(csv_file):
         y.append(line[-1])
 
     # converting the lists to numpy arrays
-    X = np.array(X)
+    X = np.array(X, dtype=float)
     y = np.array(y)
-    print("Shape of X:", X.shape)
-    print("Shape of y:", y.shape, '\n')
     return X, y
 
 class Architecture:
@@ -60,6 +58,7 @@ class MultiLayerPerceptron:
         )
         #initializing the parameters
         self.initialise_parameters()
+        self.n_layers = len(self.weights)
 
     def initialise_parameters(self):
         """ 
@@ -99,89 +98,88 @@ class MultiLayerPerceptron:
         """
         activations = [X] # a0 = input layer
         z_values = [] # to store z-values
-
         activation = X
-        n_layers = len(self.weights)
-        print(n_layers)
-        for i in range(n_layers):
+
+        for i in range(self.n_layers):
             W = self.weights[i]
             b = self.biases[i]
             
             # compute pre-activation
-            print(f"layer {i+1}")
-            print("input", activation.shape, "weights", np.array(W).shape, "biases", np.array(b).shape, b)
             z = activation @ W + b
-            print(np.array(z).shape)
-
             z_values.append(z)
-            print(f"activation layer {i+1}", activations[i][:5])
-            print(f"z_value layer {i+1}", z_values[i][:5])
+
             # output layer --> softmax
-            if i == n_layers - 1:
+            if i == self.n_layers - 1:
                 activation = self.softmax(z)
-                print("softmax")
             # hidden layers → chosen activation function
             else:
                 activation = self.nonlin_selector(z)
-                print(self.activation_function)
             activations.append(activation)
-        print(f"activation layer {len(activations)}", activations[-1][:5])
-        print(len(z_values), len(activations))
-        print(sum(activations[-1]))
-        print(activations[-1])
         return activations, z_values
 
     
     def backpropagation(self, activations, z_values, y, learning_rate=0.01):
         y_onehot = self.one_hot_encoding(y)
+        n_samples = len(y)
         predictions = activations[-1]
-        error = y_onehot - predictions
-        print(y_onehot)
-        print(predictions)
-        print(error)
-        loss = self.categorical_cross_entropy(predictions, y_onehot)
-        print("loss", loss)
-        accuracy = np.mean(np.argmax(predictions, axis = 1) == np.argmax(y_onehot, axis = 1))
-        print("accuracy:", accuracy)
-        for layer in range(len(activations), 0, -1):
-            delta = error * self.d_nonlin_selector(activations[layer])
-            self.weights[layer] = learning_rate * delta
-            self.biases[layer] += learning_rate * delta
+        delta = predictions - y_onehot
+
+        weight_gradients = [np.zeros(weight.shape) for weight in self.weights]
+        bias_gradients = [np.zeros(bias.shape) for bias in self.biases]
+
+        bias_gradients[-1] = np.sum(delta, axis=0, keepdims=True) / n_samples
+        weight_gradients[-1] = activations[-2].T @ delta / n_samples
+
+        #calculating the gradients for the weights and biases
+        for layer in range(self.n_layers-2, -1, -1):
+            delta = (delta @ self.weights[layer+1].T) * self.d_nonlin_selector(z_values[layer])
+            weight_gradients[layer] = activations[layer].T @ delta / n_samples
+            bias_gradients[layer] = np.sum(delta, axis=0, keepdims=True) / n_samples
+
+        #updating the weights and biases
+        for layer in range(self.n_layers):
+            self.weights[layer] -= learning_rate * weight_gradients[layer]
+            self.biases[layer] -= learning_rate * bias_gradients[layer]
 
 
-    def train_model(self, X_train, y_train, alpha = 0.1, learning_rate = 0.01, epochs = 1000):
-        """
-        Trains your ML algorithm on the provided training data.
+    def train_model(self, X_train, y_train, learning_rate = 0.001, epochs = 1000):
+        history = {
+            "loss": [],
+            "accuracy": []
+        }
+        count = 0
+        y_onehot = self.one_hot_encoding(y_train)
+        for epoch in range(epochs):
+            activations, z_values = self.forward(X_train)
+            self.backpropagation( activations, z_values, y_train, learning_rate)
 
-        Parameters:
-            X_train (numpy.ndarray): Training features, shape (n_samples, n_features)
-            y_train (numpy.ndarray): Training labels, shape (n_samples,)
-            **hyperparams: Algorithm-specific hyperparameters
-                        (e.g., learning_rate=0.01, max_iter=1000, k=5, etc.)
+            #keeping track of loss and accuracy
+            predictions = activations[-1]
+            loss = self.categorical_cross_entropy(predictions, y_onehot)
+            accuracy = np.mean(np.argmax(predictions, axis = 1) == np.argmax(y_onehot, axis = 1))
+            history["loss"].append(loss)
+            history["accuracy"].append(accuracy)
 
-        Returns:
-            model_params (dict): A dictionary containing all information needed
-                                to make predictions later.
-                                For example, it might include learned weights,
-                                biases, thresholds, or training statistics.
-        """
-        pass
+            if epoch == count+25:
+                print(f"epoch: {epoch}/{epochs}")
+                print("loss", loss)
+                print("accuracy:", accuracy)
+                count = epoch
+
+        model_params = {
+            "weights": self.weights,
+            "biases": self.biases,
+            "train history":  history
+        }
+
+        return model_params
 
     def predict(self, X_test, model_params):
-        """
-        Uses the trained parameters to make predictions on new (test) data.
+        self.weights = model_params["weights"]
+        self.biases = model_params["biases"]
 
-        Parameters:
-            X_test (numpy.ndarray): Test features, shape (n_samples, n_features)
-            model_params (dict): Dictionary of parameters returned by train_model()
-
-        Returns:
-            y_pred (numpy.ndarray): Predicted labels, shape (n_samples,)
-        """
-        pass
-
-   
-        pass
+        activations, _ = self.forward(X_test)
+        return np.argmax(activations[-1], axis=1)
 
 
     #activation functions
@@ -196,7 +194,6 @@ class MultiLayerPerceptron:
             ValueError(
                 f"{self.activation_function} is not valid activation function for this model, choose between ReLU, sigmoid or tanh."
             )
-
 
     #optional activation function in hidden layer
     def sigmoid(self, z): 
@@ -235,12 +232,23 @@ class MultiLayerPerceptron:
     def d_tanh(self,z):
         f = self.tanh
         return 1- f(z)*f(z)
-    
+    """ 
     def d_relu(self, z):
-        if z > 0:
-            return 1
-        else:
-            return 0
+        return (z > 0).astype(float)
+    """
+
+
+    def d_relu(self, z):
+        d_relu = []
+        for input in z:
+            d_relu_part = []
+            for value in input:
+                if value > 0:
+                    d_relu_part.append(1)
+                else:
+                    d_relu_part.append(0)
+            d_relu.append(d_relu_part)
+        return np.array(d_relu)
 
     def d_softmax(self, z):
         f = self.softmax
@@ -267,8 +275,8 @@ class MultiLayerPerceptron:
         return -np.sum(y * np.log(y_predict_clipped)) / y.shape[0] #returning mean of sample losses
 
 X_train, y_train = data_extraction_csv("data/train.csv")
-
+X_test, y_test = data_extraction_csv("data/test.csv")
 model = MultiLayerPerceptron(6, 3)
 print(model.architecture.layer_sizes)
-activations, z_values = model.forward(X_train)
-model.backpropagation(activations, z_values, y_train)
+params = model.train_model(X_train, y_train)
+model.predict(X_test, params)
