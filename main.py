@@ -133,11 +133,10 @@ class MultiLayerPerceptron:
 
     
     def backpropagation(self, activations, z_values, y, learning_rate=0.01):
-        y_enc = pd.factorize(y)[0]
+        y_onehot = self.one_hot_encoding(y)
         prediction = activations[-1]
-        print(prediction)
-        print(y_enc)
-        error = y_enc - prediction
+        error = y_onehot - prediction
+
         for layer in range(len(activations), 0, -1):
             delta = error * self.d_nonlin_selector(activations[layer])
             error = delta @ self.weights(layer).T
@@ -249,6 +248,14 @@ class MultiLayerPerceptron:
         return np.sqrt(2 / in_dim) #used for ReLU networks
         
     def one_hot_encoding(self, y):
+        y_factorize, labels = pd.factorize(y)
+        base_arr = np.zeros((np.array(y).shape[0], len(labels)))
+        for observation in range(len(y_factorize)):
+            base_arr[observation][y_factorize[observation]] = 1
+        y_onehot = base_arr
+        return y_onehot
+        
+    def categorical_cross_entropy(Y_predict, y):
         pass
 
 X_train, y_train = data_extraction_csv("data/train.csv")
@@ -256,4 +263,4 @@ X_train, y_train = data_extraction_csv("data/train.csv")
 model = MultiLayerPerceptron(6, 3)
 print(model.architecture.layer_sizes)
 activations, z_values = model.forward(X_train)
-#model.backpropagation(activations, z_values, y_train)
+model.backpropagation(activations, z_values, y_train)
