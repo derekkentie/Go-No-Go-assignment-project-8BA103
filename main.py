@@ -11,8 +11,6 @@ def data_extraction_csv(csv_file):
     assuming that the csv file has a header in the first row and the output variables stored in the last column 
     """
     data = np.array(pd.read_csv(csv_file, sep=','))
-    #data = [line.strip().split(',') for line in open(csv_file, 'r')] # extracting all the data from the raw csv file and placing it in a list of lists
-    #data.pop(0) #removing the header
     # creating the lists from the input variables and labels
     X = []
     y = []
@@ -24,8 +22,8 @@ def data_extraction_csv(csv_file):
     # converting the lists to numpy arrays
     X = np.array(X)
     y = np.array(y)
-    print("Shape of X:", X.shape, '\n')
-    print("Shape of y:", y.shape)
+    print("Shape of X:", X.shape)
+    print("Shape of y:", y.shape, '\n')
     return X, y
 
 class Architecture:
@@ -46,16 +44,12 @@ class Architecture:
 
 
 class MultiLayerPerceptron:
-    def __init__(self, X, y, hidden_size = (3,2), activation_function = "ReLU"):
-
-        #determining the input and output sizes
-        n_features = X.shape[1]
-        outputs = np.unique(y)
+    def __init__(self, n_features, n_classes, hidden_size = (4,4), activation_function = "ReLU"):
 
         #assigning all the values 
         self.input_size = n_features
         self.hidden_size = hidden_size
-        self.output_size = len(outputs)
+        self.output_size = n_classes
         self.activation_function = activation_function
         
         #connecting the Architecture class as an object, this will later be used to assign a parameter to every connection between the nodes
@@ -106,7 +100,7 @@ class MultiLayerPerceptron:
         activations = [X] # a0 = input layer
         z_values = [] # to store z-values
 
-        a = X
+        activation = X
         n_layers = len(self.weights)
         print(n_layers)
         for i in range(n_layers):
@@ -114,28 +108,36 @@ class MultiLayerPerceptron:
             b = self.biases[i]
             
             # compute pre-activation
-            print(a.shape, np.array(W).shape, np.array(b).shape)
-            z = a @ W + b
+            print(f"layer {i+1}")
+            print("input", activation.shape, "weights", np.array(W).shape, "biases", np.array(b).shape, b)
+            z = activation @ W + b
             print(np.array(z).shape)
 
             z_values.append(z)
-
+            print(f"activation layer {i+1}", activations[i][:5])
+            print(f"z_value layer {i+1}", z_values[i][:5])
             # output layer --> softmax
             if i == n_layers - 1:
-                a = self.softmax(z)
-
+                activation = self.softmax(z)
+                print("softmax")
             # hidden layers → chosen activation function
             else:
-                a = self.nonlin_selector(z)
-
-            activations.append(a)
-        print("activations:", activations[-1][:10])
-        #print("z values:", z_values[1])
+                activation = self.nonlin_selector(z)
+                print(self.activation_function)
+            activations.append(activation)
+        print(f"activation layer {len(activations)}", activations[-1][:5])
+        print(len(z_values), len(activations))
+        print(sum(activations[-1]))
+        print(activations[-1])
         return activations, z_values
 
     
-    def backpropagation(self, activations, z_values, y):
-        error = y - activations[-1]
+    def backpropagation(self, activations, z_values, y, learning_rate=0.01):
+        y_enc = pd.factorize(y)[0]
+        prediction = activations[-1]
+        print(prediction)
+        print(y_enc)
+        error = y_enc - prediction
         for layer in range(len(activations), 0, -1):
             delta = error * self.d_nonlin_selector(activations[layer])
             error = delta @ self.weights(layer).T
@@ -175,29 +177,42 @@ class MultiLayerPerceptron:
    
         pass
 
+
     #activation functions
     def nonlin_selector(self, z):
-        if self.activation_function == "ReLU":
+        if self.activation_function.lower() == "relu":
             return self.relu(z)
-        elif self.activation_function == "sigmoid":
+        elif self.activation_function.lower() == "sigmoid":
             return self.sigmoid(z)
-        elif self.activation_function == "tanh":
+        elif self.activation_function.lower() == "tanh":
             return self.tanh(z)
+        else:
+            ValueError(
+                f"{self.activation_function} is not valid activation function for this model, choose between ReLU, sigmoid or tanh."
+            )
 
-    def sigmoid(self, z): #optional activation function in hidden layer
+
+    #optional activation function in hidden layer
+    def sigmoid(self, z): 
+        z = np.array(z, dtype=float) 
         return 1 / (1 + np.exp(-z))
     
     def tanh(self, z):
         return np.tanh(z)
     
-    def relu(self, z): #optional activation function in hidden layer
-        return np.maximum(0.0, z)
+    def relu(self, z): 
+        return np.maximum(0, z)
     
-    def softmax(self, z): #softmax is used in the output layer to enable the model to classify with multiple classes
-        z = np.array(z, dtype=float)               # zorg dat het een vector is
-        e_z = np.exp(z - np.max(z))               # numerically stable softmax
-        return e_z / np.sum(e_z)
-    
+    #softmax is used in the output layer to enable the model to classify with multiple classes
+    def softmax(self, z): 
+        z_softmax = []
+        for observation in z: #performing softmax per observation
+            observation = np.array(observation, dtype=float) #making sure that the observations are vectors
+            e_observation = np.exp(observation - np.max(observation)) #exponentiation
+            norm_e_observation = (e_observation / np.sum(e_observation)) #normalization to get softmax
+            z_softmax.append(norm_e_observation)
+        return np.array(z_softmax)
+
     #derivative activation functions
     def d_nonlin_selector(self, z):
         if self.activation_function == "ReLU":
@@ -233,10 +248,12 @@ class MultiLayerPerceptron:
     def he_init(self, in_dim):
         return np.sqrt(2 / in_dim) #used for ReLU networks
         
-
+    def one_hot_encoding(self, y):
+        pass
 
 X_train, y_train = data_extraction_csv("data/train.csv")
 
-model = MultiLayerPerceptron(X_train, y_train)
+model = MultiLayerPerceptron(6, 3)
 print(model.architecture.layer_sizes)
-model.forward(X_train)
+activations, z_values = model.forward(X_train)
+#model.backpropagation(activations, z_values, y_train)
