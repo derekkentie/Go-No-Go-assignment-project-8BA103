@@ -121,9 +121,8 @@ class MultiLayerPerceptron:
                 activation = self.nonlin_selector(z)
             activations.append(activation)
         return activations, z_values
-
     
-    def backpropagation(self, activations, z_values, y, learning_rate=0.01):
+    def backpropagation(self, activations, z_values, y, learning_rate):
         n_samples = len(y)
         predictions = activations[-1]
         delta = predictions - y
@@ -144,7 +143,6 @@ class MultiLayerPerceptron:
         for layer in range(self.n_layers):
             self.weights[layer] -= learning_rate * weight_gradients[layer]
             self.biases[layer] -= learning_rate * bias_gradients[layer]
-
 
     def train_model(self, X_train, y_train, learning_rate = 0.001, epochs = 1000):
         history = {
