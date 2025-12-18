@@ -29,21 +29,6 @@ def data_extraction_csv(csv_file, normalize=True):
 
     return X, y, None, None
 
-def encode_labels(labels):
-    """
-    We need to encode the labels to integers to let to softmax function work properly in the output layer
-    """
-    classes = sorted(np.unique(labels))    # e.g. ['Bad', 'Good', 'Medium'] because it is sorted alphabetically
-
-    # creating to dictionaries, one for converting labels to integers, and one the other way around
-    class_to_int = {cls: i for i, cls in enumerate(classes)} 
-    int_to_class = {i: cls for cls, i in class_to_int.items()}
-
-    # We need the integer values for backwardpropagation
-    y_int = np.array([class_to_int[label] for label in labels], dtype=int)
-
-    return y_int, class_to_int, int_to_class
-
 
 class Architecture:
     """ 
@@ -66,13 +51,10 @@ class MultiLayerPerceptron:
     def __init__(self, n_features, n_classes, hidden_size = (4,4), activation_function = "ReLU"):
 
         #assigning all the values 
-        self.n_samples = n_samples
         self.input_size = n_features
         self.hidden_size = hidden_size
         self.output_size = n_classes
         self.activation_function = activation_function
-        self.learning_rate = learning_rate
-        self.epochs = epochs
         
         #connecting the Architecture class as an object, this will later be used to assign a parameter to every connection between the nodes
         self.architecture = Architecture(
@@ -203,18 +185,6 @@ class MultiLayerPerceptron:
         return np.argmax(activations[-1], axis=1)
 
 
-        
-    #activation function selector
-    def activation(self, z):
-        if self.activation_function == "ReLU":
-            return self.relu(z)
-        elif self.activation_function == "sigmoid":
-            return self.sigmoid(z)
-        elif self.activation_function == "tanh":
-            return self.tanh(z)
-        else:
-            raise ValueError("Activation function must be 'ReLU' (standard), 'sigmoid' or 'tanh'.")
-    
     #activation functions
     def nonlin_selector(self, z):
         if self.activation_function.lower() == "relu":
