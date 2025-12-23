@@ -95,7 +95,7 @@ class MultiLayerPerceptron:
             self.weights.append(W)
             self.biases.append(b)
 
-    def forwardpropagation(self, X):
+    def forward(self, X):
         """
         Perform a forward pass through the network.
         Returns:
